@@ -1,0 +1,125 @@
+#!/usr/bin/env php
+<?php declare(strict_types=1);
+/*
+ * This file is part of the jojo1981/git-helper package
+ *
+ * Copyright (c) 2020 Joost Nijhuis <jnijhuis81@gmail.com>
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed in the root of the source code
+ */
+$cwd = getcwd();
+chdir(__DIR__ . '/../');
+$ts = rtrim(shell_exec('git log -n1 --pretty=%ct HEAD'));
+if (!is_numeric($ts)) {
+    echo 'Could not detect date using "git log -n1 --pretty=%ct HEAD"' . PHP_EOL;
+    exit(1);
+}
+chdir($cwd);
+
+/**
+ * @param string $src
+ * @param string $dst
+ * @return void
+ * @throws RuntimeException
+ */
+function recursiveCopy(string $src, string $dst): void
+{
+    $dir = opendir($src);
+    if (!@mkdir($dst) && !is_dir($dst)) {
+        throw new RuntimeException(sprintf('Directory "%s" was not created', $dst));
+    }
+    while (false !== $file = readdir($dir)) {
+        if ('.' !== $file && '..' !== $file) {
+            if (is_dir($src . '/' . $file)) {
+                recursiveCopy($src . '/' . $file, $dst . '/' . $file);
+            } else {
+                copy($src . '/' . $file, $dst . '/' . $file);
+            }
+        }
+    }
+    closedir($dir);
+}
+
+/**
+ * @param string $dirPath
+ * @return void
+ * @throws UnexpectedValueException
+ */
+function deleteDir(string $dirPath): void
+{
+    $it = new RecursiveDirectoryIterator($dirPath, RecursiveDirectoryIterator::SKIP_DOTS);
+    $files = new RecursiveIteratorIterator($it, RecursiveIteratorIterator::CHILD_FIRST);
+    foreach ($files as $file) {
+        if ($file->isDir()) {
+            rmdir($file->getRealPath());
+        } else {
+            unlink($file->getRealPath());
+        }
+    }
+    rmdir($dirPath);
+}
+
+/**
+ * @param string $dirPath
+ * @return void
+ * @throws RuntimeException
+ */
+function createDir(string $dirPath): void
+{
+    if (!mkdir($dirPath, 0777, true) && !is_dir($dirPath)) {
+        throw new RuntimeException(sprintf('Directory "%s" was not created', $dirPath));
+    }
+}
+
+$vendorDirectory = __DIR__ . '/../vendor';
+$cacheDirectory = __DIR__ . '/../var/cache/vendor';
+$buildDirectory = __DIR__ . '/../build';
+$resourcesDirectory = __DIR__ . '/../resources';
+
+if (is_dir($buildDirectory)) {
+    /** @noinspection PhpUnhandledExceptionInspection */
+    deleteDir($buildDirectory);
+}
+if (is_dir($cacheDirectory)) {
+    /** @noinspection PhpUnhandledExceptionInspection */
+    deleteDir($cacheDirectory);
+}
+if (is_dir($vendorDirectory)) {
+    /** @noinspection PhpUnhandledExceptionInspection */
+    deleteDir($vendorDirectory);
+}
+
+/** @noinspection PhpUnhandledExceptionInspection */
+createDir($vendorDirectory);
+/** @noinspection PhpUnhandledExceptionInspection */
+createDir($cacheDirectory);
+/** @noinspection PhpUnhandledExceptionInspection */
+createDir($buildDirectory);
+
+shell_exec('composer install --no-dev');
+/** @noinspection PhpUnhandledExceptionInspection */
+recursiveCopy($vendorDirectory, $cacheDirectory);
+shell_exec('composer install');
+
+require __DIR__ . '/../bootstrap.php';
+
+use Jojo1981\GitTag\Compiler;
+use Symfony\Component\Filesystem\Filesystem;
+
+error_reporting(-1);
+ini_set('display_errors', '1');
+
+try {
+    $compiler = new Compiler(dirname(__DIR__) . '/', new Filesystem());
+    $compiler->compile('git-helper.phar');
+} catch (Throwable $exception) {
+    echo sprintf(
+        'Failed to compile phar: [%s] %s at %s:%d' . PHP_EOL,
+        get_class($exception),
+        $exception->getMessage(),
+        $exception->getFile(),
+        $exception->getLine()
+    );
+    exit(1);
+}
