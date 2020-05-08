@@ -64,7 +64,7 @@ EOF;
     /** @var ClientInterface */
     private $client;
 
-    /** @var \stdCLass */
+    /** @var stdCLass */
     private $release;
 
     /**
@@ -88,13 +88,12 @@ EOF;
     public function download(Updater $updater): void
     {
         $release = $this->getLatestRelease();
-        $signatureFile = null;
+        $signature = null;
         $tempPharFile = null;
         foreach ($release->assets ?? [] as $asset) {
             if ('git-helper.sig' === $asset->name) {
                 $result = $this->getContent($updater, $asset->browser_download_url);
-                $signatureFile = $updater->getTempDirectory() . DIRECTORY_SEPARATOR . 'git-helper.sig';
-                file_put_contents($signatureFile, $result);
+                $signature = base64_decode(json_decode(file_get_contents($result), true)['sha384']);
             }
             if ('git-helper' === $asset->name) {
                 file_put_contents(
@@ -104,9 +103,9 @@ EOF;
             }
         }
 
-        if (null === $signatureFile || null === $tempPharFile) {
+        if (null === $signature || null === $tempPharFile) {
             $messages = [];
-            if (null === $signatureFile) {
+            if (null === $signature) {
                 $messages[] = 'Could not download signature file: `git-helper.sig`.';
             }
             if (null === $tempPharFile) {
@@ -114,10 +113,6 @@ EOF;
             }
             throw new HttpRequestException(implode(PHP_EOL, $messages));
         }
-
-        $signature = file_get_contents($signatureFile);
-        $signature = json_decode($signature, true);
-        $signature = base64_decode($signature['sha384']);
 
         $algorithm = defined('OPENSSL_ALGO_SHA384') ? OPENSSL_ALGO_SHA384 : 'SHA384';
         $publicKeyResource = openssl_pkey_get_public(self::PUBLIC_KEY);
