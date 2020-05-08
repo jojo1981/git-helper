@@ -9,7 +9,15 @@
  */
 namespace Jojo1981\GitTag;
 
+use Humbug\SelfUpdate\Updater;
+use Jojo1981\GitTag\Command\SelfUpdateCommand;
 use Symfony\Component\Console\Application as BaseApplication;
+use Symfony\Component\Console\Exception\CommandNotFoundException;
+use Symfony\Component\Console\Exception\NamespaceNotFoundException;
+use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Output\OutputInterface;
+use Throwable;
+use function sprintf;
 
 /**
  * @author Joost Nijhuis <jnijhuis81@gmail.com>
@@ -29,12 +37,16 @@ final class Application extends BaseApplication
     /** @var string */
     public const RELEASE_DATE = '@release_date@';
 
+    /** @var Updater */
+    private $updater;
+
     /**
-     * Constructor
+     * @param Updater $updater
      */
-    public function __construct()
+    public function __construct(Updater $updater)
     {
         parent::__construct(self::NAME, '@package_version' . '@' === self::VERSION ? 'development' : self::VERSION);
+        $this->updater = $updater;
     }
 
     /**
@@ -53,5 +65,36 @@ final class Application extends BaseApplication
         }
 
         return parent::getLongVersion();
+    }
+
+    /**
+     * @param InputInterface $input
+     * @param OutputInterface $output
+     * @return int
+     * @throws NamespaceNotFoundException
+     * @throws Throwable
+     * @throws CommandNotFoundException
+     */
+    public function doRun(InputInterface $input, OutputInterface $output): int
+    {
+        $commandName = null;
+        if ($name = $this->getCommandName($input)) {
+            try {
+                $commandName = $this->find($name)->getName();
+            } catch (Throwable $exception) {
+                // nothing to do
+            }
+        }
+
+        if ($commandName !== SelfUpdateCommand::NAME && $this->updater->hasUpdate()) {
+            $output->writeln(sprintf(
+                '<info>Warning: There is a new update available: %s. It is recommended to update it by running "%s '
+                . 'self-update" to get the latest version.</info>',
+                $this->updater->getNewVersion(),
+                $_SERVER['PHP_SELF'])
+            );
+        }
+
+        return parent::doRun($input, $output);
     }
 }

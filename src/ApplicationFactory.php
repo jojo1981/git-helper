@@ -9,12 +9,14 @@
  */
 namespace Jojo1981\GitTag;
 
+use Humbug\SelfUpdate\Updater;
 use Jojo1981\GitTag\Command\CleanCommand;
 use Jojo1981\GitTag\Command\CreateTagCommand;
 use Jojo1981\GitTag\Command\RemoveTagCommand;
 use Jojo1981\GitTag\Command\RollbackLastCommitCommand;
 use Jojo1981\GitTag\Command\SelfUpdateCommand;
 use Jojo1981\GitTag\Command\ShowTagCommand;
+use Jojo1981\GitTag\SelfUpdate\Strategy\GithubStrategy;
 use Symfony\Component\Console\Exception\LogicException;
 
 /**
@@ -33,17 +35,33 @@ final class ApplicationFactory
     {
         if (null === $this->application) {
             $gitHelper = new GitHelper();
-            $this->application = new Application();
+            $updater = new Updater(null, false);
+
+            $this->application = new Application($updater);
             $this->application->add(new CleanCommand($gitHelper));
             $this->application->add(new CreateTagCommand($gitHelper));
             $this->application->add(new RemoveTagCommand($gitHelper));
             $this->application->add(new ShowTagCommand($gitHelper));
             $this->application->add(new RollbackLastCommitCommand($gitHelper));
-            if ('@' . 'package_version' . '@' !== Application::VERSION) {
-                $this->application->add(new SelfUpdateCommand());
+            if (!$this->isDevelopment()) {
+                $this->application->add(new SelfUpdateCommand($updater));
             }
+
+            $updater->setStrategyObject(new GithubStrategy(
+                'jojo1981',
+                'git-helper',
+                $this->application->getVersion()
+            ));
         }
 
         return $this->application;
+    }
+
+    /**
+     * @return bool
+     */
+    private function isDevelopment(): bool
+    {
+        return '@package_version' . '@' === Application::VERSION;
     }
 }
