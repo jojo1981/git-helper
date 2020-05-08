@@ -418,7 +418,7 @@ EOF;
     {
         $binExecutable = basename($pharFile, '.phar');
         $year = date('Y');
-        $stub = <<<EOF
+        return <<<EOF
 #!/usr/bin/env php
 <?php declare(strict_types=1);
 /*
@@ -429,7 +429,10 @@ EOF;
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed in the root of the source code
  */
-if (extension_loaded('apc') && filter_var(ini_get('apc.enable_cli'), FILTER_VALIDATE_BOOLEAN) && filter_var(ini_get('apc.cache_by_default'), FILTER_VALIDATE_BOOLEAN)) {
+if (extension_loaded('apc') 
+    && filter_var(ini_get('apc.enable_cli'), FILTER_VALIDATE_BOOLEAN)
+    && filter_var(ini_get('apc.cache_by_default'), FILTER_VALIDATE_BOOLEAN)
+) {
     if (version_compare(phpversion('apc'), '3.0.12', '>=')) {
         ini_set('apc.cache_by_default', 0);
     } else {
@@ -440,19 +443,11 @@ if (extension_loaded('apc') && filter_var(ini_get('apc.enable_cli'), FILTER_VALI
 
 Phar::mapPhar('{$pharFile}');
 
-EOF;
-
-        // add warning once the phar is older than 60 days
-        if (preg_match('{^[a-f0-9]+$}', $this->version)) {
-            $warningTime = ((int)$this->versionDate->format('U')) + 60 * 86400;
-            $stub .= "define('DEV_WARNING_TIME', $warningTime);\n\n";
-        }
-
-        return $stub . <<<EOF
 require 'phar://{$pharFile}/bin/{$binExecutable}';
 
 __HALT_COMPILER();
 
+?>
 EOF;
     }
 }
