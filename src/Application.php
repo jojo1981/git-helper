@@ -86,7 +86,9 @@ final class Application extends BaseApplication
             }
         }
 
-        if ($commandName !== SelfUpdateCommand::NAME && $this->updater->hasUpdate()) {
+        if ('@package_branch_alias_version' . '@' !== self::BRANCH_ALIAS_VERSION
+            && $commandName !== SelfUpdateCommand::NAME && $this->updater->hasUpdate()
+        ) {
             $output->writeln(sprintf(
                 '<info>Warning: There is a new update available: %s. It is recommended to update it by running "%s '
                 . 'self-update" to get the latest version.</info>',
