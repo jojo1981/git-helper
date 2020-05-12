@@ -77,7 +77,7 @@ final class GitHelper
     public function getRemoteVersion(): Version
     {
         $versionString = $this->runProcess(Process::fromShellCommandline(sprintf(
-            'git ls-remote --tags --refs --sort="v:refname" %s | tail -n1 | sed \'s/.*\///\'',
+            'git ls-remote --tags %s | sort -t \'/\' -k 3 -V | tail -n1 | sed \'s/.*\///; s/\^{}//\'',
             $this->getOriginalRemoteRepository()
         )));
 
