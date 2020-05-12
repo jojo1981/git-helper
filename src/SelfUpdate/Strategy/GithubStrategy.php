@@ -93,7 +93,7 @@ EOF;
         foreach ($release->assets ?? [] as $asset) {
             if ('git-helper.sig' === $asset->name) {
                 $result = $this->getContent($updater, $asset->browser_download_url);
-                $signature = base64_decode(json_decode(file_get_contents($result), true)['sha384']);
+                $signature = base64_decode(json_decode($result, true)['sha384']);
             }
             if ('git-helper' === $asset->name) {
                 file_put_contents(
