@@ -18,6 +18,7 @@ use Jojo1981\GitTag\Command\SelfUpdateCommand;
 use Jojo1981\GitTag\Command\ShowTagCommand;
 use Jojo1981\GitTag\SelfUpdate\Strategy\GithubStrategy;
 use Symfony\Component\Console\Exception\LogicException;
+use Symfony\Component\Filesystem\Filesystem;
 
 /**
  * @package Jojo1981\GitTag
@@ -44,7 +45,7 @@ final class ApplicationFactory
             $this->application->add(new ShowTagCommand($gitHelper));
             $this->application->add(new RollbackLastCommitCommand($gitHelper));
             if (!$this->isDevelopment()) {
-                $this->application->add(new SelfUpdateCommand($updater));
+                $this->application->add(new SelfUpdateCommand($updater, new Filesystem()));
             }
 
             $updater->setStrategyObject(new GithubStrategy(

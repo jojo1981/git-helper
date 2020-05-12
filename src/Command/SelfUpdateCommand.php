@@ -16,6 +16,7 @@ use Symfony\Component\Console\Exception\InvalidArgumentException as ConsoleInval
 use Symfony\Component\Console\Exception\LogicException as ConsoleLogicException;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Filesystem\Filesystem;
 use Throwable;
 
 /**
@@ -29,14 +30,19 @@ class SelfUpdateCommand extends Command
     /** @var Updater */
     private $updater;
 
+    /** @var Filesystem */
+    private $filesystem;
+
     /**
      * @param Updater $updater
+     * @param Filesystem $filesystem
      * @throws ConsoleLogicException
      */
-    public function __construct(Updater $updater)
+    public function __construct(Updater $updater, Filesystem $filesystem)
     {
         parent::__construct();
         $this->updater = $updater;
+        $this->filesystem = $filesystem;
     }
 
     /**
@@ -64,6 +70,10 @@ class SelfUpdateCommand extends Command
 
         try {
             $result = $this->updater->update();
+            $backupPharFile = $this->getBackupPharFile($this->updater);
+            if ($result && $this->filesystem->exists($backupPharFile)) {
+                $this->filesystem->remove($backupPharFile);
+            }
             $output->writeln('<info>' . ($result ? 'Updated!' : 'No update needed!') . '</info>');
         } catch (Throwable $exception) {
             $output->writeln(
@@ -74,5 +84,19 @@ class SelfUpdateCommand extends Command
         }
 
         return 0;
+    }
+
+    /**
+     * @param Updater $updater
+     * @return string
+     */
+    private function getBackupPharFile(Updater $updater): string
+    {
+        if (null !== $updater->getBackupPath()) {
+            return $updater->getBackupPath();
+        }
+
+        return $updater->getTempDirectory() . DIRECTORY_SEPARATOR . $updater->getLocalPharFileBasename()
+            . $updater->getBackupExtension();
     }
 }

@@ -120,8 +120,8 @@ EOF;
         openssl_free_key($publicKeyResource);
         if (!$verified) {
             throw new RuntimeException(
-                'The phar signature did not match the file you downloaded, this means your public keys are outdated or'
-                . ' that the phar file is corrupt/has been modified'
+                'The phar signature did not match the file you downloaded, this means that the phar file is'
+                . ' corrupt/has been modified'
             );
         }
 
