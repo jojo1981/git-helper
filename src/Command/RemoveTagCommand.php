@@ -13,6 +13,7 @@ use InvalidArgumentException;
 use Jojo1981\GitTag\Entity\Version;
 use Jojo1981\GitTag\GitHelperAwareCommand;
 use LogicException;
+use Symfony\Component\Console\Command\LockableTrait;
 use Symfony\Component\Console\Exception\InvalidArgumentException as ConsoleInvalidArgumentException;
 use Symfony\Component\Console\Exception\LogicException as ConsoleLogicException;
 use Symfony\Component\Console\Exception\RuntimeException as ConsoleRuntimeException;
@@ -21,6 +22,9 @@ use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Question\ChoiceQuestion;
+use Symfony\Component\Lock\Exception\LockAcquiringException;
+use Symfony\Component\Lock\Exception\LockConflictedException;
+use Symfony\Component\Lock\Exception\LockReleasingException;
 use Symfony\Component\Process\Exception\InvalidArgumentException as ProcessInvalidArgumentException;
 use Symfony\Component\Process\Exception\LogicException as ProcessLogicException;
 use Symfony\Component\Process\Exception\ProcessFailedException;
@@ -35,6 +39,8 @@ use function trim;
  */
 class RemoveTagCommand extends GitHelperAwareCommand
 {
+    use LockableTrait;
+
     /**
      * @return void
      * @throws ConsoleInvalidArgumentException
@@ -85,15 +91,26 @@ class RemoveTagCommand extends GitHelperAwareCommand
      * @param OutputInterface $output
      * @return int
      * @throws ConsoleInvalidArgumentException
+     * @throws ConsoleLogicException
+     * @throws InvalidArgumentException
+     * @throws ProcessFailedException
      * @throws ProcessInvalidArgumentException
      * @throws ProcessLogicException
      * @throws ProcessRuntimeException
      * @throws ProcessSignaledException
      * @throws ProcessTimedOutException
-     * @throws InvalidArgumentException
+     * @throws LockAcquiringException
+     * @throws LockConflictedException
+     * @throws LockReleasingException
      */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
+        if (!$this->lock()) {
+            $output->writeln('The command is already running in another process.');
+
+            return 1;
+        }
+
         $tag = Version::createFromString(trim($input->getArgument('tag')));
 
         $this->getGitHelper()->fetch();
@@ -104,6 +121,7 @@ class RemoveTagCommand extends GitHelperAwareCommand
                 '<error>Tag: %s doesn\'t exists locally and also not remotely</error>',
                 $tag->getAsString()
             ));
+            $this->release();
 
             return 1;
         }
@@ -119,6 +137,8 @@ class RemoveTagCommand extends GitHelperAwareCommand
             $this->getGitHelper()->removeRemoteTag($tag);
             $output->writeln('Remote tag successfully removed');
         }
+
+        $this->release();
 
         return 0;
     }
