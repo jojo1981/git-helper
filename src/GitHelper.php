@@ -239,6 +239,20 @@ final class GitHelper
      * @throws ProcessRuntimeException
      * @throws ProcessFailedException
      */
+    public function pull(): void
+    {
+        $this->runProcess(Process::fromShellCommandline('git pull'));
+    }
+
+    /**
+     * @return void
+     * @throws ProcessInvalidArgumentException
+     * @throws ProcessLogicException
+     * @throws ProcessSignaledException
+     * @throws ProcessTimedOutException
+     * @throws ProcessRuntimeException
+     * @throws ProcessFailedException
+     */
     public function pushTags(): void
     {
         $this->runProcess(Process::fromShellCommandline('git push --tags'));
@@ -324,6 +338,21 @@ final class GitHelper
         $this->runProcess(Process::fromShellCommandline('git fetch'));
     }
 
+    /**
+     * @param string $branchName
+     * @return void
+     * @throws ProcessInvalidArgumentException
+     * @throws ProcessLogicException
+     * @throws ProcessRuntimeException
+     * @throws ProcessSignaledException
+     * @throws ProcessTimedOutException
+     * @throws ProcessFailedException
+     */
+    public function createBranch(string $branchName): void
+    {
+        $this->runProcess(Process::fromShellCommandline('git checkout -b ' . $branchName));
+        $this->runProcess(Process::fromShellCommandline('git push --set-upstream origin ' . $branchName));
+    }
 
     /**
      * @return string
