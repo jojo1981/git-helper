@@ -9,20 +9,24 @@
  */
 namespace Jojo1981\GitTag\Command;
 
-use Exception;
 use InvalidArgumentException;
 use Jojo1981\GitTag\GitHelperAwareCommand;
 use LogicException;
+use RuntimeException;
 use Symfony\Component\Console\Command\LockableTrait;
+use Symfony\Component\Console\Exception\CommandNotFoundException;
 use Symfony\Component\Console\Exception\InvalidArgumentException as ConsoleInvalidArgumentException;
 use Symfony\Component\Console\Exception\LogicException as ConsoleLogicException;
-use Symfony\Component\Console\Exception\RuntimeException;
+use Symfony\Component\Console\Exception\RuntimeException as ConsoleRuntimeException;
 use Symfony\Component\Console\Helper\QuestionHelper;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Question\ChoiceQuestion;
+use Symfony\Component\Lock\Exception\LockAcquiringException;
+use Symfony\Component\Lock\Exception\LockConflictedException;
+use Symfony\Component\Lock\Exception\LockReleasingException;
 use Symfony\Component\Process\Exception\InvalidArgumentException as ProcessInvalidArgumentException;
 use Symfony\Component\Process\Exception\LogicException as ProcessLogicException;
 use Symfony\Component\Process\Exception\ProcessFailedException;
@@ -77,13 +81,13 @@ class CreateTagCommand extends GitHelperAwareCommand
      * @param InputInterface $input
      * @param OutputInterface $output
      * @return void
-     * @throws RuntimeException
+     * @throws ConsoleRuntimeException
      * @throws ConsoleInvalidArgumentException
      */
     protected function initialize(InputInterface $input, OutputInterface $output): void
     {
         if (null !== ($mode = $input->getArgument('mode')) && !in_array($mode, self::VALID_MODES, true)) {
-            throw new RuntimeException(sprintf(
+            throw new ConsoleRuntimeException(sprintf(
                 'Invalid value: `%s` for required argument `mode`, value should be one of: [%s]',
                 $mode,
                 implode(', ', self::VALID_MODES)
@@ -96,7 +100,7 @@ class CreateTagCommand extends GitHelperAwareCommand
      * @param OutputInterface $output
      * @return void
      * @throws ConsoleLogicException
-     * @throws RuntimeException
+     * @throws ConsoleRuntimeException
      * @throws LogicException
      * @throws ConsoleInvalidArgumentException
      */
@@ -120,17 +124,21 @@ class CreateTagCommand extends GitHelperAwareCommand
      * @param InputInterface $input
      * @param OutputInterface $output
      * @return int
-     * @throws Exception
      * @throws ConsoleInvalidArgumentException
      * @throws ConsoleLogicException
      * @throws InvalidArgumentException
+     * @throws LockReleasingException
      * @throws ProcessFailedException
      * @throws ProcessInvalidArgumentException
      * @throws ProcessLogicException
      * @throws ProcessRuntimeException
      * @throws ProcessSignaledException
      * @throws ProcessTimedOutException
+     * @throws ConsoleRuntimeException
      * @throws RuntimeException
+     * @throws CommandNotFoundException
+     * @throws LockAcquiringException
+     * @throws LockConflictedException
      */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
@@ -198,12 +206,13 @@ class CreateTagCommand extends GitHelperAwareCommand
     /**
      * @param string $message
      * @return void
-     * @throws RuntimeException
+     * @throws LockReleasingException
+     * @throws ConsoleRuntimeException
      */
     private function throwRuntimeException(string $message): void
     {
         $this->release();
 
-        throw new RuntimeException($message);
+        throw new ConsoleRuntimeException($message);
     }
 }
