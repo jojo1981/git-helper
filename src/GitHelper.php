@@ -32,6 +32,9 @@ use function trim;
  */
 final class GitHelper
 {
+    /** @var Version|null */
+    private $gitVersion;
+
     /**
      * @return string
      * @throws ProcessInvalidArgumentException
@@ -277,6 +280,38 @@ final class GitHelper
 
     /**
      * @return void
+     * @throws ProcessLogicException
+     * @throws ProcessRuntimeException
+     * @throws ProcessSignaledException
+     * @throws ProcessTimedOutException
+     * @throws ProcessInvalidArgumentException
+     */
+    public function pushStash(): void
+    {
+        try {
+            $this->runProcess(Process::fromShellCommandline('git stash'));
+        } catch (ProcessFailedException $exception) {
+            // Nothing to do
+        }
+    }
+
+    /**
+     * @param string $remoteBranch
+     * @return void
+     * @throws ProcessInvalidArgumentException
+     * @throws ProcessLogicException
+     * @throws ProcessRuntimeException
+     * @throws ProcessSignaledException
+     * @throws ProcessTimedOutException
+     * @throws ProcessFailedException
+     */
+    public function hardResetBranch(string $remoteBranch): void
+    {
+        $this->runProcess(Process::fromShellCommandline('git reset --hard ' . $remoteBranch));
+    }
+
+    /**
+     * @return void
      * @throws ProcessInvalidArgumentException
      * @throws ProcessLogicException
      * @throws ProcessSignaledException
@@ -287,6 +322,39 @@ final class GitHelper
     public function fetch(): void
     {
         $this->runProcess(Process::fromShellCommandline('git fetch'));
+    }
+
+
+    /**
+     * @return string
+     * @throws ProcessInvalidArgumentException
+     * @throws ProcessLogicException
+     * @throws ProcessRuntimeException
+     * @throws ProcessSignaledException
+     * @throws ProcessTimedOutException
+     * @throws ProcessFailedException
+     */
+    public function getLocalBranch(): string
+    {
+        return $this->runProcess(Process::fromShellCommandline('git rev-parse --abbrev-ref HEAD'));
+    }
+
+    /**
+     * @return string|null
+     * @throws ProcessInvalidArgumentException
+     * @throws ProcessLogicException
+     * @throws ProcessRuntimeException
+     * @throws ProcessSignaledException
+     * @throws ProcessTimedOutException
+     * @throws ProcessFailedException
+     */
+    public function getUpstreamRemoteBranch(): ?string
+    {
+        $result = $this->runProcess(Process::fromShellCommandline(
+            'git for-each-ref --format=\'%(upstream:short)\' "$(git symbolic-ref -q HEAD)"'
+        ));
+
+        return !empty($result) ? $result : null;
     }
 
     /**
@@ -322,12 +390,29 @@ final class GitHelper
         } catch (ProcessFailedException $exception) {
             $branches = [];
         }
+
         return array_filter(
             $branches,
             function (string $branch) use ($excluded): bool {
                 return !$this->contains($branch, $excluded);
             }
         );
+    }
+
+    /**
+     * @return bool
+     * @throws ProcessInvalidArgumentException
+     * @throws ProcessLogicException
+     * @throws ProcessRuntimeException
+     * @throws ProcessSignaledException
+     * @throws ProcessTimedOutException
+     * @throws ProcessFailedException
+     */
+    public function hasLocalChanges(): bool
+    {
+        return !empty($this->runProcessAndGetLines(Process::fromShellCommandline(
+            'git diff-index --name-only --ignore-submodules HEAD --'
+        )));
     }
 
     /**
@@ -342,6 +427,65 @@ final class GitHelper
     public function remotePruneOrigin(): void
     {
         $this->runProcess(Process::fromShellCommandline('git remote prune origin'));
+    }
+
+    /**
+     * @return bool
+     * @throws ProcessInvalidArgumentException
+     * @throws ProcessLogicException
+     * @throws ProcessRuntimeException
+     * @throws ProcessSignaledException
+     * @throws ProcessTimedOutException
+     * @throws ProcessFailedException
+     */
+    public function isAhead(): bool
+    {
+        return !empty($this->runProcess(Process::fromShellCommandline('git status -sb | grep ahead || true')));
+    }
+
+    /**
+     * @return bool
+     * @throws ProcessFailedException
+     * @throws ProcessInvalidArgumentException
+     * @throws ProcessLogicException
+     * @throws ProcessRuntimeException
+     * @throws ProcessSignaledException
+     * @throws ProcessTimedOutException
+     * @throws RuntimeException
+     * @throws InvalidArgumentException
+     */
+    public function isBehind(): bool
+    {
+        $gitVersion = $this->getGitVersion();
+        if ($gitVersion->lessThan(Version::createFromString('2.17.0'))) {
+            throw new RuntimeException(sprintf(
+                'Invalid git cli version: %s, must be equal to or greater than 2.17.0.' . PHP_EOL .
+                'Can not detect if the local branch is behind compared with the remote branch.',
+                $gitVersion->getAsString()
+            ));
+        }
+
+        return !empty($this->runProcess(Process::fromShellCommandline('git status -sb | grep behind || true')));
+    }
+
+    /**
+     * @return Version
+     * @throws ProcessInvalidArgumentException
+     * @throws ProcessLogicException
+     * @throws ProcessRuntimeException
+     * @throws ProcessSignaledException
+     * @throws ProcessTimedOutException
+     * @throws ProcessFailedException
+     */
+    private function getGitVersion(): Version
+    {
+        if (null === $this->gitVersion) {
+            $this->gitVersion = Version::createFromString(
+                $this->runProcess(Process::fromShellCommandline('git --version | cut -d " " -f3'))
+            );
+        }
+
+        return $this->gitVersion;
     }
 
     /**

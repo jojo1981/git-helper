@@ -201,9 +201,7 @@ EOF;
         $result = get_contents($url);
         restore_error_handler();
         if (false === $result) {
-            throw new HttpRequestException(sprintf(
-                'Request to URL failed: %s', $url
-            ));
+            throw new HttpRequestException(sprintf('Request to URL failed: %s', $url));
         }
 
         return $result;

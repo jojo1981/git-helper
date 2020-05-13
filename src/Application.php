@@ -17,6 +17,7 @@ use Symfony\Component\Console\Exception\NamespaceNotFoundException;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Throwable;
+use function basename;
 use function sprintf;
 
 /**
@@ -93,8 +94,8 @@ final class Application extends BaseApplication
                 '<info>Warning: There is a new update available: %s. It is recommended to update it by running "%s '
                 . 'self-update" to get the latest version.</info>',
                 $this->updater->getNewVersion(),
-                $_SERVER['PHP_SELF'])
-            );
+                basename($_SERVER['PHP_SELF'])
+            ));
         }
 
         return parent::doRun($input, $output);

@@ -12,6 +12,7 @@ namespace Jojo1981\GitTag;
 use Humbug\SelfUpdate\Updater;
 use Jojo1981\GitTag\Command\CleanCommand;
 use Jojo1981\GitTag\Command\CreateTagCommand;
+use Jojo1981\GitTag\Command\HardResetCommand;
 use Jojo1981\GitTag\Command\RemoveTagCommand;
 use Jojo1981\GitTag\Command\RollbackLastCommitCommand;
 use Jojo1981\GitTag\Command\SelfUpdateCommand;
@@ -43,6 +44,7 @@ final class ApplicationFactory
             $this->application->add(new CreateTagCommand($gitHelper));
             $this->application->add(new RemoveTagCommand($gitHelper));
             $this->application->add(new ShowTagCommand($gitHelper));
+            $this->application->add(new HardResetCommand($gitHelper));
             $this->application->add(new RollbackLastCommitCommand($gitHelper));
             if (!$this->isDevelopment()) {
                 $this->application->add(new SelfUpdateCommand($updater, new Filesystem()));
