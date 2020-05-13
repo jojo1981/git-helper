@@ -181,7 +181,7 @@ EOF;
         if (null === $this->client) {
             $this->client = new Client([
                 'base_uri' => 'https://api.github.com',
-                'timeout' => 2.0,
+                'timeout' => 0,
                 'http_errors' => false
             ]);
         }
