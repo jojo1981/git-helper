@@ -18,8 +18,11 @@ use function sprintf;
 /**
  * @package Jojo1981\GitTag\Entity
  */
-class Version
+final class Version
 {
+    /** @var string */
+    private const VERSION_FORMAT = '%d.%d.%d';
+
     /** @var int */
     private $major;
 
@@ -94,7 +97,7 @@ class Version
      */
     public function getAsString(): string
     {
-        return $this->parseValue(0, 0, 0);
+        return sprintf(self::VERSION_FORMAT, $this->major, $this->minor, $this->patch);
     }
 
     /**
@@ -103,7 +106,7 @@ class Version
      */
     public function getNextMajor(): Version
     {
-        return self::createFromString($this->parseValue(1, 0, 0));
+        return self::createFromString(sprintf(self::VERSION_FORMAT, $this->major + 1, 0, 0));
     }
 
     /**
@@ -112,7 +115,7 @@ class Version
      */
     public function getNextMinor(): Version
     {
-        return self::createFromString($this->parseValue(0, 1, 0));
+        return self::createFromString(sprintf(self::VERSION_FORMAT, $this->major, $this->minor + 1, 0));
     }
 
     /**
@@ -121,7 +124,7 @@ class Version
      */
     public function getNextPatch(): Version
     {
-        return self::createFromString($this->parseValue(0, 0, 1));
+        return self::createFromString(sprintf(self::VERSION_FORMAT, $this->major, $this->minor, $this->patch + 1));
     }
 
     /**
@@ -192,21 +195,5 @@ class Version
     public function greaterThanOrEqual(Version $other): bool
     {
         return 1 === $this->compare($other) || 0 === $this->compare($other);
-    }
-
-    /**
-     * @param int $incrementMajor
-     * @param int $incrementMinor
-     * @param int $incrementPatch
-     * @return string
-     */
-    private function parseValue(int $incrementMajor, int $incrementMinor, int $incrementPatch): string
-    {
-        return sprintf(
-            '%d.%d.%d',
-            $this->major + $incrementMajor,
-            $this->minor + $incrementMinor,
-            $this->patch + $incrementPatch
-        );
     }
 }
