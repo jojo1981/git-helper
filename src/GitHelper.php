@@ -25,6 +25,8 @@ use function count;
 use function explode;
 use function sprintf;
 use function stripos;
+use function strpos;
+use function substr;
 use function trim;
 
 /**
@@ -402,6 +404,22 @@ final class GitHelper
     }
 
     /**
+     * @param string $branch
+     * @return void
+     * @throws ProcessInvalidArgumentException
+     * @throws ProcessLogicException
+     * @throws ProcessSignaledException
+     * @throws ProcessTimedOutException
+     * @throws ProcessRuntimeException
+     * @throws ProcessFailedException
+     */
+    public function removeRemoteBranch(string $branch): void
+    {
+        [$remote, $branch] = explode('/', $branch);
+        $this->runProcess(Process::fromShellCommandline(sprintf('git push %s --delete %s', $remote, $branch)));
+    }
+
+    /**
      * @param array $excluded
      * @return string[]
      * @throws ProcessLogicException
@@ -426,6 +444,49 @@ final class GitHelper
                 return !$this->contains($branch, $excluded);
             }
         );
+    }
+
+    /**
+     * @return string[]
+     * @throws ProcessInvalidArgumentException
+     * @throws ProcessLogicException
+     * @throws ProcessRuntimeException
+     * @throws ProcessSignaledException
+     * @throws ProcessTimedOutException
+     * @throws ProcessFailedException
+     */
+    public function getBranches(): array
+    {
+        return $this->runProcessAndGetLines(Process::fromShellCommandline('git branch | grep -v "\*" || true'));
+    }
+
+    /**
+     * @return array
+     * @throws ProcessInvalidArgumentException
+     * @throws ProcessLogicException
+     * @throws ProcessRuntimeException
+     * @throws ProcessSignaledException
+     * @throws ProcessTimedOutException
+     * @throws ProcessFailedException
+     */
+    public function getBranchMap(): array
+    {
+        $result = [];
+        $lines = $this->runProcessAndGetLines(Process::fromShellCommandline('git branch -vv | grep -v "\*" || true'));
+        foreach ($lines as $line) {
+            if (empty(trim($line))) {
+                continue;
+            }
+
+            $start = strpos($line, '[');
+            $end = strpos($line, ']');
+            $remoteBranch = explode(':', substr($line, $start + 1, $end - $start - 1))[0];
+            $localBranch = array_filter(explode(' ', $line))[0];
+
+            $result[$localBranch] = $remoteBranch;
+        }
+
+        return $result;
     }
 
     /**
@@ -499,6 +560,7 @@ final class GitHelper
 
     /**
      * @return Version
+     * @throws InvalidArgumentException
      * @throws ProcessInvalidArgumentException
      * @throws ProcessLogicException
      * @throws ProcessRuntimeException
@@ -529,7 +591,12 @@ final class GitHelper
      */
     private function runProcessAndGetLines(Process $process): array
     {
-        return explode(PHP_EOL, $this->runProcess($process));
+        $result = $this->runProcess($process);
+        if (empty($result)) {
+            return [];
+        }
+
+        return array_map('\trim', explode(PHP_EOL, $result));
     }
 
     /**
