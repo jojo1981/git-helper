@@ -155,7 +155,7 @@ final class Compiler
         $this->versionDate = new DateTime(trim($process->getOutput()));
 
         $this->versionDate->setTimezone(new DateTimeZone('UTC'));
-        $this->writeLn('Version data: '. $this->versionDate->format(DateTimeInterface::ATOM));
+        $this->writeLn('Version data: '. $this->versionDate->format('Y-m-d\TH:i:sP'));
 
         $process = Process::fromShellCommandline('git describe --tags --exact-match HEAD');
         if (0 === $process->run()) {
